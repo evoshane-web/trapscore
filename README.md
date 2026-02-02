@@ -1,2 +1,0 @@
-# trapscore
-Trap scoring app
