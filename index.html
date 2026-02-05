@@ -84,22 +84,37 @@
             };
 
             if (view === 'setup') return (
-                <div class="p-8 flex flex-col h-screen">
-                    <h1 class="text-3xl font-black text-blue-500 italic mb-8">SQUAD SETUP</h1>
-                    <div class="space-y-3 flex-1 overflow-y-auto">
-                        {names.map((n, i) => (
-                            <input key={i} class="w-full bg-zinc-900 p-4 rounded-xl border border-zinc-800 outline-none" 
-                            placeholder={`Shooter ${i+1}`} value={n} onChange={e => {
-                                let nn = [...names]; nn[i] = e.target.value; setNames(nn);
-                            }} />
-                        ))}
-                    </div>
-                    <div class="flex gap-4 mt-6">
-                        <button onClick={() => setView('history')} class="bg-zinc-800 flex-1 p-5 rounded-2xl font-bold">LOGS</button>
-                        <button onClick={startRound} class="bg-blue-600 flex-[2] p-5 rounded-2xl font-black">START</button>
-                    </div>
-                </div>
-            );
+    /* We changed h-screen to 100dvh (Dynamic Viewport Height) to account for mobile bars */
+    <div class="p-8 flex flex-col h-[100dvh] bg-zinc-950">
+        <h1 class="text-3xl font-black text-blue-500 italic mb-6">SQUAD SETUP</h1>
+        
+        {/* 'flex-1' grows to fill space, 'overflow-y-auto' allows scrolling inside if names get long */}
+        <div class="space-y-3 flex-1 overflow-y-auto pb-4">
+            {names.map((n, i) => (
+                <input key={i} 
+                    class="w-full bg-zinc-900 p-4 rounded-xl border border-zinc-800 outline-none focus:border-blue-500" 
+                    placeholder={`Shooter ${i+1}`} 
+                    value={n} 
+                    onChange={e => {
+                        let nn = [...names]; nn[i] = e.target.value; setNames(nn);
+                    }} 
+                />
+            ))}
+        </div>
+
+        {/* This footer container is now forced to the bottom */}
+        <div class="flex gap-4 mt-auto pt-4 pb-8">
+            <button onClick={() => setView('history')} 
+                class="bg-zinc-800 flex-1 p-5 rounded-2xl font-bold text-xs tracking-widest uppercase">
+                LOGS
+            </button>
+            <button onClick={startRound} 
+                class="bg-blue-600 flex-[2] p-5 rounded-2xl font-black text-xs tracking-widest uppercase">
+                START ROUND
+            </button>
+        </div>
+    </div>
+);
 
             if (view === 'history') return <HistoryView onBack={() => setView('setup')} />;
 
@@ -210,4 +225,5 @@
         }
     </script>
 </body>
+
 </html>
