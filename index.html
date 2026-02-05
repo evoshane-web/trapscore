@@ -196,4 +196,62 @@
 
             useEffect(() => {
                 openDB().then(db => {
-                    db.transaction("rounds").objectStore("rounds").getAll().onsuccess = (e
+                    db.transaction("rounds").objectStore("rounds").getAll().onsuccess = (e) => {
+                        const data = e.target.result.reverse();
+                        setRounds(data);
+                        setStats(calculateGlobalStats(data));
+                    };
+                });
+            }, []);
+
+            const exportBackup = () => {
+                const blob = new Blob([JSON.stringify(rounds, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = `TrapScore_Backup.json`; a.click();
+            };
+
+            return (
+                <div class="p-8 h-[100dvh] overflow-y-auto flex flex-col bg-zinc-950">
+                    <button onClick={onBack} class="text-blue-500 mb-6 font-bold uppercase text-xs text-left">← Back</button>
+                    <div class="grid grid-cols-3 gap-2 mb-8">
+                        <div class="bg-zinc-900 p-3 rounded-xl border border-zinc-800 text-center">
+                            <div class="text-[8px] text-zinc-500 uppercase font-bold">Avg</div>
+                            <div class="text-lg font-black text-blue-400">{stats.avg}%</div>
+                        </div>
+                        <div class="bg-zinc-900 p-3 rounded-xl border border-zinc-800 text-center">
+                            <div class="text-[8px] text-zinc-500 uppercase font-bold">Best</div>
+                            <div class="text-lg font-black text-green-400">{stats.high}</div>
+                        </div>
+                        <div class="bg-zinc-900 p-3 rounded-xl border border-zinc-800 text-center">
+                            <div class="text-[8px] text-zinc-500 uppercase font-bold">Total</div>
+                            <div class="text-lg font-black">{stats.totalBirds}</div>
+                        </div>
+                    </div>
+                    <div class="flex-1 space-y-4">
+                        {rounds.map(r => (
+                            <div key={r.id} class="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
+                                <div class="text-[10px] text-zinc-600 font-bold mb-2 uppercase">{r.date}</div>
+                                {r.squad.map(s => (
+                                    <div class="flex justify-between py-1 border-b border-zinc-800 last:border-0">
+                                        <span class="text-xs uppercase font-bold text-zinc-400">{s.name}</span>
+                                        <span class="font-black text-green-400">{s.total}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                    <button onClick={exportBackup} class="w-full bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-[10px] font-bold text-zinc-500 uppercase mt-8 mb-8">💾 Backup to Drive</button>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<TrapApp />);
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js');
+        }
+    </script>
+</body>
+</html>
