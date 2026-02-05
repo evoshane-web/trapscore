@@ -18,7 +18,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // --- DATABASE LOGIC ---
+        // --- DATABASE HELPERS ---
         const openDB = () => {
             return new Promise((resolve) => {
                 const req = indexedDB.open("TrapScoreDB", 1);
@@ -44,11 +44,36 @@
             const [currentShooter, setCurrentShooter] = useState(0);
             const [currentStation, setCurrentStation] = useState(0);
             const [history, setHistory] = useState([]);
-            const [isListening, setIsListening] = useState(false);
 
             const startRound = () => {
                 setSquad(names.map((n, i) => ({ id: i, name: n.trim() || `Shooter ${i+1}`, scores: Array(25).fill(null), total: 0 })));
                 setView('scorer');
+            };
+
+            const resetApp = () => {
+                setNames(["", "", "", "", ""]);
+                setSquad([]);
+                setCurrentShooter(0);
+                setCurrentStation(0);
+                setView('setup');
+            };
+
+            const startNewRoundWithSameSquad = () => {
+                setSquad(squad.map(s => ({ ...s, scores: Array(25).fill(null), total: 0 })));
+                setCurrentShooter(0);
+                setCurrentStation(0);
+                setView('scorer');
+            };
+
+            const shareResults = async () => {
+                const scoreText = squad.map(s => `${s.name}: ${s.total}/25`).join('\n');
+                const fullText = `🎯 TrapScore Pro Results\nDate: ${new Date().toLocaleDateString()}\n\n${scoreText}`;
+                if (navigator.share) {
+                    try { await navigator.share({ title: 'Trap Shooting Scores', text: fullText }); } catch (err) {}
+                } else {
+                    navigator.clipboard.writeText(fullText);
+                    alert("Copied to clipboard!");
+                }
             };
 
             const handleScore = (hit) => {
@@ -70,8 +95,8 @@
                                 date: new Date().toLocaleDateString(),
                                 squad: newSquad
                             });
-                            alert("Round Saved!");
-                            setView('history');
+                            setSquad(newSquad);
+                            setView('summary');
                         });
                     } else {
                         setCurrentStation(s => s + 1);
@@ -83,43 +108,28 @@
                 setSquad(newSquad);
             };
 
+            // --- VIEW: SETUP ---
             if (view === 'setup') return (
-    /* We changed h-screen to 100dvh (Dynamic Viewport Height) to account for mobile bars */
-    <div class="p-8 flex flex-col h-[100dvh] bg-zinc-950">
-        <h1 class="text-3xl font-black text-blue-500 italic mb-6">SQUAD SETUP</h1>
-        
-        {/* 'flex-1' grows to fill space, 'overflow-y-auto' allows scrolling inside if names get long */}
-        <div class="space-y-3 flex-1 overflow-y-auto pb-4">
-            {names.map((n, i) => (
-                <input key={i} 
-                    class="w-full bg-zinc-900 p-4 rounded-xl border border-zinc-800 outline-none focus:border-blue-500" 
-                    placeholder={`Shooter ${i+1}`} 
-                    value={n} 
-                    onChange={e => {
-                        let nn = [...names]; nn[i] = e.target.value; setNames(nn);
-                    }} 
-                />
-            ))}
-        </div>
+                <div class="p-8 flex flex-col h-[100dvh] bg-zinc-950">
+                    <h1 class="text-3xl font-black text-blue-500 italic mb-6">SQUAD SETUP</h1>
+                    <div class="space-y-3 flex-1 overflow-y-auto pb-4">
+                        {names.map((n, i) => (
+                            <input key={i} class="w-full bg-zinc-900 p-4 rounded-xl border border-zinc-800 outline-none focus:border-blue-500" 
+                            placeholder={`Shooter ${i+1}`} value={n} onChange={e => {
+                                let nn = [...names]; nn[i] = e.target.value; setNames(nn);
+                            }} />
+                        ))}
+                    </div>
+                    <div class="flex gap-4 mt-auto pt-4 pb-8">
+                        <button onClick={() => setView('history')} class="bg-zinc-800 flex-1 p-5 rounded-2xl font-bold text-xs uppercase">LOGS</button>
+                        <button onClick={startRound} class="bg-blue-600 flex-[2] p-5 rounded-2xl font-black text-xs uppercase">START ROUND</button>
+                    </div>
+                </div>
+            );
 
-        {/* This footer container is now forced to the bottom */}
-        <div class="flex gap-4 mt-auto pt-4 pb-8">
-            <button onClick={() => setView('history')} 
-                class="bg-zinc-800 flex-1 p-5 rounded-2xl font-bold text-xs tracking-widest uppercase">
-                LOGS
-            </button>
-            <button onClick={startRound} 
-                class="bg-blue-600 flex-[2] p-5 rounded-2xl font-black text-xs tracking-widest uppercase">
-                START ROUND
-            </button>
-        </div>
-    </div>
-);
-
-            if (view === 'history') return <HistoryView onBack={() => setView('setup')} />;
-
-            return (
-                <div class="flex flex-col h-screen p-4">
+            // --- VIEW: SCORER ---
+            if (view === 'scorer') return (
+                <div class="flex flex-col h-[100dvh] p-4 bg-zinc-950">
                     <div class="flex justify-between p-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                         <button onClick={() => setView('setup')}>← Exit</button>
                         <span>Station {currentStation + 1}</span>
@@ -127,14 +137,14 @@
                     </div>
                     <div class="flex-1 space-y-2 pb-48 overflow-y-auto">
                         {squad.map((s, idx) => (
-                            <div key={idx} class={`p-4 rounded-2xl flex items-center justify-between border-l-4 ${idx === currentShooter ? 'bg-zinc-800 border-blue-500' : 'bg-zinc-900/30 border-transparent opacity-40'}`}>
+                            <div key={idx} class={`p-4 rounded-2xl flex items-center justify-between border-l-4 transition-all ${idx === currentShooter ? 'bg-zinc-800 border-blue-500' : 'bg-zinc-900/30 border-transparent opacity-30'}`}>
                                 <div>
                                     <div class="text-[10px] font-bold text-zinc-500 uppercase">{s.name}</div>
                                     <div class="text-2xl font-black">{s.total}</div>
                                 </div>
                                 <div class="flex gap-1">
                                     {s.scores.slice(currentStation * 5, currentStation * 5 + 5).map((v, i) => (
-                                        <div key={i} class={`w-10 h-10 rounded-lg flex items-center justify-center font-bold ${v === 1 ? 'bg-green-500 text-black' : v === 0 ? 'bg-red-600' : 'bg-zinc-800 text-zinc-600'}`}>
+                                        <div key={i} class={`w-9 h-9 rounded-lg flex items-center justify-center font-bold ${v === 1 ? 'bg-green-500 text-black' : v === 0 ? 'bg-red-600' : 'bg-zinc-800 text-zinc-600'}`}>
                                             {v === 1 ? 'X' : v === 0 ? 'O' : ''}
                                         </div>
                                     ))}
@@ -150,6 +160,34 @@
                     </div>
                 </div>
             );
+
+            // --- VIEW: SUMMARY ---
+            if (view === 'summary') return (
+                <div class="p-8 flex flex-col h-[100dvh] bg-zinc-950">
+                    <div class="mt-auto mb-auto text-center">
+                        <h1 class="text-4xl font-black text-green-500 italic mb-2">ROUND COMPLETE</h1>
+                        <p class="text-zinc-500 text-[10px] font-bold tracking-[0.3em] mb-8 uppercase">Final Squad Standings</p>
+                        <div class="space-y-2 mb-8">
+                            {squad.map(s => (
+                                <div key={s.id} class="flex justify-between items-center bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800/50">
+                                    <span class="font-bold text-zinc-300 uppercase text-sm">{s.name}</span>
+                                    <span class="text-xl font-black text-white">{s.total}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div class="space-y-3 pb-8">
+                        <button onClick={shareResults} class="w-full bg-zinc-100 text-black p-5 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2">📤 SHARE SCORES</button>
+                        <button onClick={startNewRoundWithSameSquad} class="w-full bg-blue-600 p-5 rounded-2xl font-black text-xs uppercase">NEXT ROUND (SAME SQUAD)</button>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onClick={() => setView('history')} class="bg-zinc-800 p-4 rounded-2xl font-bold text-[10px] text-zinc-400 uppercase">LOGS</button>
+                            <button onClick={resetApp} class="bg-zinc-800 p-4 rounded-2xl font-bold text-[10px] text-zinc-400 uppercase">RESET</button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            if (view === 'history') return <HistoryView onBack={() => setView('setup')} />;
         };
 
         const HistoryView = ({ onBack }) => {
@@ -158,72 +196,4 @@
 
             useEffect(() => {
                 openDB().then(db => {
-                    db.transaction("rounds").objectStore("rounds").getAll().onsuccess = (e) => {
-                        const data = e.target.result.reverse();
-                        setRounds(data);
-                        setStats(calculateGlobalStats(data));
-                    };
-                });
-            }, []);
-
-            const exportBackup = () => {
-                const blob = new Blob([JSON.stringify(rounds, null, 2)], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url; a.download = `TrapScore_Backup.json`; a.click();
-            };
-
-            const deleteRound = (id) => {
-                if(confirm("Delete?")) {
-                    openDB().then(db => {
-                        db.transaction("rounds", "readwrite").objectStore("rounds").delete(id).onsuccess = () => {
-                            setRounds(rounds.filter(r => r.id !== id));
-                        };
-                    });
-                }
-            };
-
-            return (
-                <div class="p-8 h-screen overflow-y-auto">
-                    <button onClick={onBack} class="text-blue-500 mb-6 font-bold uppercase text-xs">← Back</button>
-                    <div class="grid grid-cols-3 gap-2 mb-8">
-                        <div class="bg-zinc-900 p-3 rounded-xl border border-zinc-800 text-center">
-                            <div class="text-[8px] text-zinc-500 uppercase font-bold">Avg</div>
-                            <div class="text-lg font-black text-blue-400">{stats.avg}%</div>
-                        </div>
-                        <div class="bg-zinc-900 p-3 rounded-xl border border-zinc-800 text-center">
-                            <div class="text-[8px] text-zinc-500 uppercase font-bold">Best</div>
-                            <div class="text-lg font-black text-green-400">{stats.high}</div>
-                        </div>
-                        <div class="bg-zinc-900 p-3 rounded-xl border border-zinc-800 text-center">
-                            <div class="text-[8px] text-zinc-500 uppercase font-bold">Total</div>
-                            <div class="text-lg font-black">{stats.totalBirds}</div>
-                        </div>
-                    </div>
-                    {rounds.map(r => (
-                        <div key={r.id} class="bg-zinc-900 p-4 rounded-xl mb-4 border border-zinc-800 relative">
-                            <button onClick={() => deleteRound(r.id)} class="absolute top-2 right-4 text-zinc-700">✕</button>
-                            <div class="text-[10px] text-zinc-600 font-bold mb-2 tracking-widest">{r.date}</div>
-                            {r.squad.map(s => (
-                                <div class="flex justify-between py-1 border-b border-zinc-800 last:border-0">
-                                    <span class="text-xs uppercase font-bold text-zinc-400">{s.name}</span>
-                                    <span class="font-black text-green-400">{s.total}</span>
-                                </div>
-                            ))}
-                        </div>
-                    ))}
-                    <button onClick={exportBackup} class="w-full bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-10">💾 Backup to Drive</button>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<TrapApp />);
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js');
-        }
-    </script>
-</body>
-
-</html>
+                    db.transaction("rounds").objectStore("rounds").getAll().onsuccess = (e
